@@ -28,6 +28,7 @@ use std::{mem, ptr, str, slice, any};
 use std::ffi::{CString, CStr};
 use std::ops::DerefMut;
 use std::sync::Mutex;
+use std::mem::MaybeUninit;
 use super::convert::{ToLua, FromLua};
 
 use ::{
@@ -271,7 +272,7 @@ unsafe extern fn continue_func<F>(st: *mut lua_State, status: c_int, ctx: ffi::l
 }
 
 /// Box for extra data.
-pub type Extra = Box<any::Any + 'static + Send>;
+pub type Extra = Box<dyn any::Any + 'static + Send>;
 type ExtraHolder = *mut *mut Mutex<Option<Extra>>;
 
 unsafe extern fn alloc_func(_: *mut c_void, ptr: *mut c_void, old_size: size_t, new_size: size_t) -> *mut c_void {
@@ -1174,12 +1175,13 @@ impl State {
     unsafe { ffi::lua_replace(self.L, idx) }
   }
 
+
   //===========================================================================
   // Debug API
   //===========================================================================
   /// Maps to `lua_getstack`.
   pub fn get_stack(&mut self, level: c_int) -> Option<lua_Debug> {
-    let mut ar: lua_Debug = unsafe { mem::uninitialized() };
+    let mut ar: lua_Debug = unsafe { MaybeUninit::uninit().assume_init() };
     let result = unsafe { ffi::lua_getstack(self.L, level, &mut ar) };
     if result == 0 {
       None
@@ -1190,7 +1192,7 @@ impl State {
 
   /// Maps to `lua_getinfo`.
   pub fn get_info(&mut self, what: &str) -> Option<lua_Debug> {
-    let mut ar: lua_Debug = unsafe { mem::uninitialized() };
+    let mut ar: lua_Debug = unsafe { MaybeUninit::uninit().assume_init() };
     let c_str = CString::new(what).unwrap();
     let result = unsafe { ffi::lua_getinfo(self.L, c_str.as_ptr(), &mut ar) };
     if result == 0 {
@@ -1440,8 +1442,6 @@ impl State {
 
   /// Maps to `luaL_checkoption`.
   pub fn check_option(&mut self, arg: Index, def: Option<&str>, lst: &[&str]) -> usize {
-    use std::vec::Vec;
-    use libc::c_char;
     let mut vec: Vec<*const c_char> = Vec::with_capacity(lst.len() + 1);
     let cstrs: Vec<CString> = lst.iter().map(|ent| CString::new(*ent).unwrap()).collect();
     for ent in cstrs.iter() {
@@ -1537,7 +1537,6 @@ impl State {
 
   /// Maps to `luaL_setfuncs`.
   pub fn set_fns(&mut self, l: &[(&str, Function)], nup: c_int) {
-    use std::vec::Vec;
     let mut reg: Vec<ffi::luaL_Reg> = Vec::with_capacity(l.len() + 1);
     let ents: Vec<(CString, Function)> = l.iter().map(|&(s, f)| (CString::new(s).unwrap(), f)).collect();
     for &(ref s, f) in ents.iter() {

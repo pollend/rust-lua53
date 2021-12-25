@@ -61,18 +61,18 @@ typedef struct rs_item {
 const char* rs_int_type(int width) {
   switch (width) {
     default:
-    case 2: return "int16_t";
-    case 4: return "int32_t";
-    case 8: return "int64_t";
+    case 2: return "i16";
+    case 4: return "i32";
+    case 8: return "i64";
   }
 }
 
 const char* rs_uint_type(int width) {
   switch (width) {
     default:
-    case 2: return "uint16_t";
-    case 4: return "uint32_t";
-    case 8: return "uint64_t";
+    case 2: return "u16";
+    case 4: return "u32";
+    case 8: return "u64";
   }
 }
 
